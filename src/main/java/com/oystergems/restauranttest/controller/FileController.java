@@ -33,7 +33,8 @@ public class FileController {
 
         return "redirect:/";
     }
-
+    
+    
     @PostMapping("/uploadFiles")
     public String uploadFiles(@RequestParam("files") MultipartFile[] files, RedirectAttributes redirectAttributes) {
 

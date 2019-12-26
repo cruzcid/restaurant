@@ -119,8 +119,8 @@ public class FileService {
     	String givenDays[] = daysTxt.split(",");
     	for( int d=0; d<givenDays.length; d++ ) {
     		if(indexOfFirstPatterOcurrance(givenDays[d], "-") != -1) {
-    			// Eg. givenDays[d] be like Mon-Tue
-    			saveForRangeDate(hoursStartDate, hoursEndDate, givenDays[d], restaurant);
+    			// Eg. givenDays[d] be like Mon-Tue    			    			
+    			saveForRangeDate(hoursStart, hoursEnd, givenDays[d], restaurant);
     		}else {
     			// Save unique day Eg: Mon
     			saveForUniqueDate(hoursStartDate, hoursEndDate, givenDays[d], restaurant);
@@ -128,21 +128,25 @@ public class FileService {
     	}
     }
     
-    public void saveForRangeDate(Date startDate, Date endDate, String dateRange, Restaurant restaurantId) {
-    	// Eg. Mon-Fri 
+    public void saveForRangeDate(String hoursStart, String hoursEnd, String dateRange, Restaurant restaurantId) {
+    	// Eg. dateRange -> Mon-Fri 
 
     	dateRange = dateRange.trim();
     	String dayStartToEnd[] = dateRange.split("-");
-    	int startDay = getNumberFromWeekDay(dayStartToEnd[0]);
-    	int endDay = getNumberFromWeekDay(dayStartToEnd[1]);
+    	int startDay = getNumberFromWeekDaySeries(dayStartToEnd[0]);
+    	int endDay = getNumberFromWeekDaySeries(dayStartToEnd[1]);
     	
     	for(int start = startDay; start <= endDay; start++ ) {
     		
     		RestaurantSchedule restaurantSchedule = new RestaurantSchedule();
-    		restaurantSchedule.setDayOfWeek(Long.valueOf(start));
+    		restaurantSchedule.setDayOfWeek(Long.valueOf(getCalendarWeekNumberFromWeekNumberDay(start)));
+    		Date startDate = hoursTextToDate( Long.valueOf( getCalendarWeekNumberFromWeekNumberDay(start) ), hoursStart);
     		restaurantSchedule.setStartTime(startDate);
+    		
+    		Date endDate = hoursTextToDate( Long.valueOf( getCalendarWeekNumberFromWeekNumberDay(start) ), hoursEnd);
     		restaurantSchedule.setEndTime(endDate);
     		restaurantSchedule.setRestaurantId(restaurantId);
+    		
     		System.out.println("                             saveForRangeDate: " + restaurantSchedule.toString());
     		RestaurantSchedule savedRestaurantSchedule = restaurantService.saveRestaurantSchedule(restaurantSchedule); 
     		System.out.println("                                savedRestaurantSchedule: " + restaurantSchedule.toString());
@@ -155,7 +159,7 @@ public class FileService {
 
     	givenDay = givenDay.trim();
     	
-    	int uniqueDay = getNumberFromWeekDay( givenDay );
+    	int uniqueDay = getNumberFromWeekDayCalendarStyle( givenDay );
     	    	    	
 		RestaurantSchedule restaurantSchedule = new RestaurantSchedule();
 		restaurantSchedule.setDayOfWeek(Long.valueOf(uniqueDay));
@@ -169,8 +173,40 @@ public class FileService {
 		
     }
     
-    public int getNumberFromWeekDay(String day) {
-		// Eg: Mon = 1, Tue = 2, ... , Sun = 7
+    public int getNumberFromWeekDayCalendarStyle(String day) {
+		// Eg: Mon = 2, Tue = 3, Wed = 4 ... , Sun = 1
+    	int gDay = 0;
+		
+    	switch(day) {
+    		case "Mon":    		
+    			gDay = 2;
+    	    	break;
+    		case "Tue":
+    			gDay = 3;
+    			break;
+    		case "Wed":
+    			gDay = 4;
+    			break;
+    		case "Thu":
+    			gDay = 5;
+    			break;
+    		case "Fri":
+    			gDay = 6;
+    			break;
+    		case "Sat":
+    			gDay = 7;
+    			break;
+    		case "Sun":
+    			gDay = 1;
+    			break;
+    	  default:
+    		  gDay = 1;
+    	}
+    	
+    	return gDay;
+    }
+    public int getNumberFromWeekDaySeries(String day) {
+		// Eg: Mon = 2, Tue = 3, Wed = 4 ... , Sun = 1
     	int gDay = 0;
 		
     	switch(day) {
@@ -201,6 +237,39 @@ public class FileService {
     	
     	return gDay;
     }
+    public int getCalendarWeekNumberFromWeekNumberDay(int day) {
+		// Eg: Mon = 2, Tue = 3, Wed = 4 ... , Sun = 1
+    	int gDay = 0;
+		
+    	switch(day) {
+    		case 1:    	
+    			// Mon
+    			gDay = 2;
+    	    	break;
+    		case 2:
+    			gDay = 3;
+    			break;
+    		case 3:
+    			gDay = 4;
+    			break;
+    		case 4:
+    			gDay = 5;
+    			break;
+    		case 5:
+    			gDay = 6;
+    			break;
+    		case 6:
+    			gDay = 7;
+    			break;
+    		case 7:
+    			gDay = 1;
+    			break;
+    	  default:
+    		  gDay = 1;
+    	}
+    	
+    	return gDay;
+    }
     public int indexOfFirstPatterOcurrance(String text, String patternString) {
     	
     	int ocurrance = -1;
@@ -214,6 +283,42 @@ public class FileService {
     	
     	return ocurrance;
     	
+    }
+    
+    public Date hoursTextToDate(Long numberOfDay, String hoursText) {
+    	// Eg: hoursText -> 11:40 am || 2:30 pm
+    	hoursText = hoursText.trim();
+    	Calendar cal = Calendar.getInstance();
+    	
+    	int hours = 0;
+    	int minutes = 0;
+    	
+    	boolean isPm = indexOfFirstPatterOcurrance(hoursText, "pm") != -1;
+    	
+    	String hoursMinutesAndAmpm[] = hoursText.split(" ");
+    	// Eg: hoursMinutesAndAmpm[0] be like 11:40 am || 2:30 pm
+    	
+    	hours = getHoursFromHoursText(hoursMinutesAndAmpm[0]);
+    	minutes = getMinutesFromHoursText(hoursMinutesAndAmpm[0]);    
+    	
+    	if( isPm ) {    		
+    		
+    		// It`s pm.  Eg: 12 pm + 1 = 13hrs, 10pm + 12 = 22hrs
+    		int midDay = 12;
+    		hours = midDay + hours;    	
+    	
+    	} 
+    	
+    	// Set Hours and Minutes
+    	cal.set(Calendar.HOUR_OF_DAY, hours);
+    	cal.set(Calendar.MINUTE, minutes );
+    	cal.set(Calendar.SECOND, 0);
+    	cal.set(Calendar.MILLISECOND, 0);
+    	cal.set(Calendar.DAY_OF_WEEK, Math.toIntExact(numberOfDay));
+    	
+    	Date date = cal.getTime();
+    	
+    	return date;
     }
     
     public Date hoursTextToDate(String hoursText) {
@@ -245,6 +350,7 @@ public class FileService {
     	cal.set(Calendar.MINUTE, minutes );
     	cal.set(Calendar.SECOND, 0);
     	cal.set(Calendar.MILLISECOND, 0);
+    	
     	Date date = cal.getTime();
     	
     	return date;
